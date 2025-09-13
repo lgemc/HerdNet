@@ -242,7 +242,8 @@ def main(cfg: DictConfig) -> None:
     train_dl_kwargs = dict(
         batch_size=cfg.training_settings.batch_size,
         shuffle=True,
-        collate_fn=_get_collate_fn(cfg)
+        collate_fn=_get_collate_fn(cfg),
+        num_workers=cfg.training_settings.num_workers.train
         )
     
     if train_args.sampler is not None:
@@ -263,7 +264,9 @@ def main(cfg: DictConfig) -> None:
             end_transforms = _load_end_transforms(val_args.end_transforms)
             )
         
-        val_dataloader = DataLoader(val_dataset, batch_size=1, shuffle=False, collate_fn=_get_collate_fn(cfg))
+        val_dataloader = DataLoader(val_dataset, batch_size=1, shuffle=False, 
+                                   collate_fn=_get_collate_fn(cfg), 
+                                   num_workers=cfg.training_settings.num_workers.eval)
 
     work_dir = None
 
