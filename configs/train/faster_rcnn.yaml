@@ -23,13 +23,16 @@ losses: null
 datasets:
   img_size: [512,512]
   anno_type: 'bbox'
-  num_classes: 4
+  num_classes: 7
   collate_fn: 'collate_fn'
 
   class_def:
-    1: 'camel'
-    2: 'donkey'
-    3: 'sheep/goat'
+    1: 'topi'
+    2: 'buffalo'
+    3: 'kob'
+    4: 'warthog'
+    5: 'waterbuck'
+    6: 'elephant'
   
   train:
     name: 'CSVDataset'

@@ -17,3 +17,8 @@ dependencies = [
     "tqdm>=4.67.1",
     "wandb>=0.21.4",
 ]
+
+[dependency-groups]
+dev = [
+    "notebook>=7.4.5",
+]
