@@ -13,6 +13,8 @@ tests/
 scripts/
 *.code-workspace
 
+**/*.log
+wandb
 configs/train/*
 configs/test/*
 !configs/*/faster_rcnn.yaml
