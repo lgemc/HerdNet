@@ -102,7 +102,6 @@ training_settings:
     threshold_mode: 'rel'
     cooldown: 10
     min_lr: 1e-6
-    verbose: True
   warmup_iters: 100
   vizual_fn: null
   epochs: 100
