@@ -30,7 +30,7 @@ losses:
 datasets:
   img_size: [512,512]
   anno_type: 'point'
-  num_classes: 7
+  num_classes: 7 # Class 0 (background)
   collate_fn: null
 
   class_def:

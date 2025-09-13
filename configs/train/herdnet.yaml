@@ -34,12 +34,12 @@ losses:
     lambda_const: 1.0
     kwargs:
       reduction: 'mean'
-      weight: [0.1,5.,15.,1.]
+      weight: [0.1,5.,15.,1.,5.,5.,1.]
 
 datasets:
   img_size: [512,512]
   anno_type: 'point'
-  num_classes: 7 
+  num_classes: 7 # Class 0 (background)
   collate_fn: null
 
   class_def:
