@@ -34,10 +34,6 @@ from animaloc.eval import Evaluator, PointsMetrics, Stitcher, BoxesMetrics, Imag
 from animaloc.utils.seed import set_seed
 from animaloc.utils.useful_funcs import current_date
 
-def _set_species_labels(cls_dict: dict, df: pandas.DataFrame) -> None:
-    assert 'species' in df.columns
-    cls_dict = dict(map(reversed, cls_dict.items()))
-    df['labels'] = df['species'].map(cls_dict)
 
 def _load_albu_transforms(tr_cfg: dict) -> list:
     transforms = []
@@ -235,7 +231,6 @@ def main(cfg: DictConfig) -> None:
     val_args = cfg.datasets.validate
 
     train_df = pandas.read_csv(train_args.csv_file)
-    _set_species_labels(dict(cfg.datasets.class_def), train_df)
 
     train_dataset = animaloc.datasets.__dict__[train_args.name](
         csv_file = train_df,
@@ -260,7 +255,6 @@ def main(cfg: DictConfig) -> None:
     if val_args is not None:
 
         val_df = pandas.read_csv(val_args.csv_file)
-        _set_species_labels(dict(cfg.datasets.class_def), val_df)
         
         val_dataset = animaloc.datasets.__dict__[val_args.name](
             csv_file = val_df,
