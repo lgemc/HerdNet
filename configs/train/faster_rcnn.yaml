@@ -1,6 +1,6 @@
-wandb_project: 'Sample project'
-wandb_entity: 'youraccountname'
-wandb_run: 'myrun'
+wandb_project: 'camera-traps'
+wandb_entity: 'luis-manrique-car-camera-traps'
+wandb_run: 'camera-traps-train'
 seed: 1
 device_name: 'cuda'
 
