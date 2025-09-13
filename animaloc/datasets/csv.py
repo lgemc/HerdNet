@@ -110,8 +110,9 @@ class CSVDataset(Dataset):
         self.annotations = AnnotationsFromCSV(self.csv_file)
         self.data = self.annotations.dataframe
 
-        self.anno_type = self.data.annos[0].atype
-
+        # Map annotation types from object types to expected string format
+        detected_type = self.data.annos[0].atype
+        self.anno_type = 'bbox' if detected_type == 'BoundingBox' else 'point'
         used = set()
         self._img_names = [x for x in self.annotations.images 
             if x not in used and (used.add(x) or True)]
@@ -154,7 +155,7 @@ class CSVDataset(Dataset):
         if self.albu_transforms:
 
             # Bounding boxes
-            if self.anno_type == 'BoundingBox':
+            if self.anno_type == 'bbox':
                 transform_pipeline = albumentations.Compose(
                     self.albu_transforms, 
                     bbox_params=albumentations.BboxParams(
@@ -187,7 +188,7 @@ class CSVDataset(Dataset):
                 return tr_image, tr_target
             
             # Points
-            if self.anno_type == 'Point':
+            if self.anno_type == 'point':
                 transform_pipeline = albumentations.Compose(
                     self.albu_transforms, 
                     keypoint_params=albumentations.KeypointParams(
