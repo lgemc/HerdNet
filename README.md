@@ -233,7 +233,7 @@ python tools/patcher.py -h
 ### Starting a Training Session
 A training session can easily be launched using the `train.py` tool. This tool uses [Hydra](https://hydra.cc/) framework. You simply need to modify the basic config file and then run:
 ```console
-python tools/train.py
+PYTHONPATH="$pwd:PYTHONPATH" uv run python tools/train.py 
 ```
 
 You can also create your own config file. Save it first into the [`configs/train`](https://github.com/Alexandre-Delplanque/HerdNet/tree/main/configs/train) folder and then run:
