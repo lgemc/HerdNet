@@ -67,6 +67,7 @@ training_settings:
   valid_freq: 1
   print_freq: 100
   batch_size: 4
+  val_batch_size: 4
   optimizer: 'adam'
   lr: 1e-5
   weight_decay: 0.0005

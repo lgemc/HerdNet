@@ -264,7 +264,8 @@ def main(cfg: DictConfig) -> None:
             end_transforms = _load_end_transforms(val_args.end_transforms)
             )
         
-        val_dataloader = DataLoader(val_dataset, batch_size=1, shuffle=False, 
+        val_batch_size = getattr(cfg.training_settings, 'val_batch_size', 1)
+        val_dataloader = DataLoader(val_dataset, batch_size=val_batch_size, shuffle=False, 
                                    collate_fn=_get_collate_fn(cfg), 
                                    num_workers=cfg.training_settings.num_workers.eval)
 
