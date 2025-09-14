@@ -34,7 +34,7 @@ losses:
     lambda_const: 1.0
     kwargs:
       reduction: 'mean'
-      weight: [0.1,5.,15.,1.,5.,5.,1.]
+      weight: [0.1,1.2,1.9,1.16,6.37,12.12,1.0]
 
 datasets:
   img_size: [512,512]
@@ -102,13 +102,13 @@ training_settings:
   trainer: 'Trainer'
   valid_freq: 1
   print_freq: 100
-  batch_size: 4
+  batch_size: 8
   optimizer: 'adam'
   lr: 1e-4
   weight_decay: 0.0005
   num_workers:
     train: 16
-    eval: 8
+    eval: 16
   auto_lr:
     mode: 'max'
     patience: 10
