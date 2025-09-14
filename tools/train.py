@@ -376,7 +376,7 @@ def main(cfg: DictConfig) -> None:
             pth_path = cfg.model.resume_from, 
             select = select,
             validate_on = validate_on, 
-            load_optim = True,
+            load_optim = cfg.model.get('load_optim', False),
             wandb_flag = True
             )
     else:

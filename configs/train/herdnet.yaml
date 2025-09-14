@@ -9,6 +9,7 @@ model:
   from_torchvision: False
   load_from: null
   resume_from: null
+  load_optim: false
   kwargs:
     num_layers: 34
     pretrained: True
@@ -103,7 +104,7 @@ training_settings:
   valid_freq: 1
   print_freq: 100
   batch_size: 8
-  val_batch_size: 4
+  val_batch_size: 1
   optimizer: 'adam'
   lr: 1e-4
   weight_decay: 0.0005
@@ -116,7 +117,7 @@ training_settings:
     threshold: 1e-4
     threshold_mode: 'rel'
     cooldown: 10
-    min_lr: 1e-6
+    min_lr: 1e-5
   warmup_iters: 100
   vizual_fn: null
   epochs: 100
