@@ -308,7 +308,6 @@ class DINOv3Backbone(nn.Module):
         # If not a perfect square, try to find the closest dimensions or interpolate
         if H * W != expected_patches:
             # Try to find reasonable dimensions
-            print(f"Warning: Non-square patch count {expected_patches}, trying to handle gracefully")
 
             # Option 1: Find closest square that's slightly smaller and pad/interpolate
             H = W = int(math.sqrt(expected_patches))
@@ -489,7 +488,7 @@ class HerdNetDinoV3(nn.Module):
 
         # Classification head
         self.cls_head = nn.Sequential(
-            nn.Conv2d(final_channels, head_conv,
+            nn.Conv2d(target_channels[self.first_level], head_conv,
                      kernel_size=3, padding=1, bias=True),
             nn.ReLU(inplace=True),
             nn.Conv2d(
