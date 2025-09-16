@@ -19,6 +19,8 @@ from .register import MODELS
 from .faster_rcnn import *
 from .dla import *
 from .herdnet import *
+from .vit_backbone import *
+from .vit_herdnet import *
 from .utils import *
 from .ss_dla import *
 
