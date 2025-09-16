@@ -442,8 +442,9 @@ class HerdNetDinoV3(nn.Module):
         base_channels = [64, 128, 256, 512]
 
         # We need at least first_level+1 layers for upsampling
-        # But DLA upsampling requires at least 2 layers, so ensure minimum of 2
-        min_levels_needed = max(self.first_level + 1, 2)
+        # But DLA upsampling requires at least 2 layers AFTER first_level slice,
+        # so ensure minimum of first_level + 2
+        min_levels_needed = max(self.first_level + 2, 2)
         target_channels = base_channels[:min_levels_needed]
 
         # Feature adaptation
