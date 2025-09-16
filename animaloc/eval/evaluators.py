@@ -358,7 +358,22 @@ class HerdNetEvaluator(Evaluator):
             up = False
 
         lmds = HerdNetLMDS(up=up, **self.lmds_kwargs)
+        # Enable debug output for LMDS
+        lmds._debug_enabled = True
         counts, locs, labels, scores, dscores = lmds(output)
+
+        # Debug: Print heatmap statistics to diagnose detection issues
+        heatmap, clsmap = output
+        heatmap_stats = {
+            'min': float(heatmap.min()),
+            'max': float(heatmap.max()),
+            'mean': float(heatmap.mean()),
+            'std': float(heatmap.std())
+        }
+        print(f"DEBUG - Heatmap stats: min={heatmap_stats['min']:.4f}, max={heatmap_stats['max']:.4f}, "
+              f"mean={heatmap_stats['mean']:.4f}, std={heatmap_stats['std']:.4f}")
+        print(f"DEBUG - LMDS detected {len(labels[0]) if labels and labels[0] else 0} objects, "
+              f"GT has {len(gt_labels)} objects")
 
         # Convert spatial counts to per-class counts
         pred_labels = labels[0] if len(labels) > 0 and len(labels[0]) > 0 else []

@@ -120,9 +120,17 @@ class LMDS:
         est_map = self._local_max(est_map.unsqueeze(0).unsqueeze(0))
 
         # adaptive threshold for counting
-        est_map[est_map < self.adapt_ts * est_map_max] = 0
+        threshold_value = self.adapt_ts * est_map_max
+        peaks_before_threshold = torch.sum(est_map > 0).item()
+        est_map[est_map < threshold_value] = 0
         scores_map = torch.clone(est_map)
         est_map[est_map > 0] = 1
+        peaks_after_threshold = torch.sum(est_map).item()
+
+        # Debug output for threshold filtering
+        if hasattr(self, '_debug_enabled') and self._debug_enabled:
+            print(f"DEBUG LMDS - max: {est_map_max:.4f}, threshold: {threshold_value:.4f}, "
+                  f"peaks before: {peaks_before_threshold}, after: {peaks_after_threshold}")
 
         # negative sample
         if est_map_max < self.neg_ts:
@@ -142,10 +150,10 @@ class LMDS:
 class HerdNetLMDS(LMDS):
 
     def __init__(
-        self, 
-        up: bool = True, 
-        kernel_size: tuple = (3,3), 
-        adapt_ts: float = 0.3, 
+        self,
+        up: bool = True,
+        kernel_size: tuple = (3,3),
+        adapt_ts: float = 0.1,
         neg_ts: float = 0.1
         ) -> None:
         '''
@@ -155,7 +163,7 @@ class HerdNetLMDS(LMDS):
             kernel_size (tuple, optional): size of the kernel used to select local
                 maxima. Defaults to (3,3) (as in the paper).
             adapt_ts (float, optional): adaptive threshold to select final points
-                from candidates. Defaults to 0.3.
+                from candidates. Defaults to 0.1.
             neg_ts (float, optional): negative sample threshold used to define if 
                 an image is a negative sample or not. Defaults to 0.1 (as in the paper).
         '''

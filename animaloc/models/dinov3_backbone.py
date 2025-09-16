@@ -484,9 +484,9 @@ class HerdNetDinoV3(nn.Module):
             nn.Sigmoid()
         )
 
-        # Initialize bias to help early training - start with slightly positive bias
-        # so sigmoid doesn't start at 0.5, but can learn to be more selective
-        self.loc_head[-2].bias.data.fill_(-2.0)  # Changed from 0.00 to -2.0
+        # Initialize bias to help early training - start with neutral bias
+        # so sigmoid starts at 0.5, allowing the model to learn both positive and negative adjustments
+        self.loc_head[-2].bias.data.fill_(0.00)  # Reset to neutral initialization
 
         # Classification head
         self.cls_head = nn.Sequential(
