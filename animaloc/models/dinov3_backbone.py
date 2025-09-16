@@ -262,6 +262,13 @@ class DINOv3Backbone(nn.Module):
         if isinstance(features, (list, tuple)):
             features = features[0]
 
+        # Handle DINOv3 dictionary output
+        if isinstance(features, dict):
+            if 'x_norm_patchtokens' in features:
+                features = features['x_norm_patchtokens']
+            else:
+                raise ValueError(f"Expected 'x_norm_patchtokens' in dict, got keys: {list(features.keys())}")
+
         if not isinstance(features, torch.Tensor):
             raise ValueError(f"Expected tensor, got {type(features)}")
 
