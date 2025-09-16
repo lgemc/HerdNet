@@ -203,7 +203,11 @@ class HerdNetLMDS(LMDS):
         b_counts, b_labels, b_scores, b_locs, b_dscores = [], [], [], [], []
         for b in range(batch_size):
 
-            _, locs, _ = self._lmds(heatmap[b][0])
+            count, locs, scores = self._lmds(heatmap[b][0])
+
+            # Debug: Check if locations are being found
+            if hasattr(self, '_debug_enabled') and self._debug_enabled:
+                print(f"DEBUG LMDS - Peak count: {count}, Locations found: {len(locs)}")
 
             # Apply softmax to classification logits for consistent probability-based assignment
             cls_probs = torch.softmax(clsmap[b,1:,:,:], dim=0)
