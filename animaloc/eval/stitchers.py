@@ -231,16 +231,6 @@ class HerdNetStitcher(Stitcher):
             patch = patch[0].to(self.device)
             outputs = self.model(patch)
 
-            # Debug: Log what the model actually returns
-            print(f"[DEBUG] Model raw output type: {type(outputs)}")
-            if isinstance(outputs, (list, tuple)):
-                print(f"[DEBUG] Model output elements: {len(outputs)}")
-                for i, elem in enumerate(outputs):
-                    if hasattr(elem, 'shape'):
-                        print(f"[DEBUG] Element {i} shape: {elem.shape}")
-                    else:
-                        print(f"[DEBUG] Element {i} type: {type(elem)}")
-
             # Handle different model output formats
             if isinstance(outputs, dict):
                 # For models that return {'heatmap': ..., 'clsmap': ...} or similar
@@ -272,22 +262,12 @@ class HerdNetStitcher(Stitcher):
             if isinstance(clsmap, dict):
                 raise ValueError(f"clsmap is still a dict after extraction: {clsmap.keys()}")
 
-            # Debug: Log shapes before processing
-            print(f"[DEBUG] Heatmap shape: {heatmap.shape}")
-            print(f"[DEBUG] Clsmap shape: {clsmap.shape}")
-
             # Fix: The clsmap has 7 channels but should have 6 (exclude background)
             if clsmap.shape[1] == 7:
-                print(f"[DEBUG] Removing background class from clsmap")
                 clsmap = clsmap[:, 1:, :, :]  # Remove background class (index 0)
-                print(f"[DEBUG] Corrected clsmap shape: {clsmap.shape}")
-
-            # Fix: The model already outputs the correct resolution - no upscaling needed
-            # Remove the unnecessary 16x upscaling that was causing issues
 
             # cat
             outmaps = torch.cat([heatmap, clsmap], dim=1)
-            print(f"[DEBUG] Final concatenated shape: {outmaps.shape}")
             maps = [*maps, *outmaps.unsqueeze(0)]
 
         return maps

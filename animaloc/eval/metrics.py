@@ -108,22 +108,13 @@ class Metrics:
             self.score_flag = 1
             assert len(preds['scores']) == len(preds['loc'])
         
-        # Debug: Log what metrics receives
-        print(f"[DEBUG] Metrics feed - GT: {len(gt['loc'])} objects, Preds: {len(preds['loc'])} objects")
-        print(f"[DEBUG] GT labels: {gt['labels']}")
-        print(f"[DEBUG] Pred labels: {preds['labels'][:10] if len(preds['labels']) > 0 else []}")
-        print(f"[DEBUG] est_count: {est_count}")
-
         if len(gt['loc']) == 0:
-            print(f"[DEBUG] No ground truth objects")
             self._no_gt(gt, preds)
 
         if len(preds['loc']) == 0:
-            print(f"[DEBUG] No predictions made")
             self._no_preds(gt, preds)
 
         if len(gt['loc']) > 0 and len(preds['loc']) > 0:
-            print(f"[DEBUG] Matching {len(gt['loc'])} GT with {len(preds['loc'])} predictions")
             self.matching(gt, preds)
         
         if est_count is not None:
