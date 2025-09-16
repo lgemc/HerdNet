@@ -173,7 +173,7 @@ class ViTHerdNet(nn.Module):
         elif vit_size == 'large':
             self.backbone = vit_large(pretrained=pretrained, img_size=img_size, patch_size=patch_size)
         else:
-            raise ValueError(f"Unsupported ViT size: {vit_size}")
+            raise ValueError(f"Unsupported ViT size: {vit_size}. Available: 'small', 'base', 'large'")
         
         # Get channel configuration from backbone
         self.channels = self.backbone.channels

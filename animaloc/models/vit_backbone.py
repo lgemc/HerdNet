@@ -21,6 +21,7 @@ import math
 from typing import Optional, Tuple, List
 
 from .register import MODELS
+from .pretrained_utils import load_pretrained_vit_weights, get_model_config, list_available_models
 
 
 class PatchEmbedding(nn.Module):
@@ -236,9 +237,16 @@ class ViTBackbone(nn.Module):
         depth: int = 12,
         num_heads: int = 12,
         pretrained: bool = True,
+        pretrained_model: Optional[str] = None,
         return_levels: bool = True
     ):
         super().__init__()
+        
+        self.embed_dim = embed_dim
+        self.depth = depth
+        self.num_heads = num_heads
+        self.patch_size = patch_size
+        self.img_size = img_size
         
         self.vit = VisionTransformer(
             img_size=img_size,
@@ -253,48 +261,101 @@ class ViTBackbone(nn.Module):
         self.channels = self.vit.channels
         
         if pretrained:
-            self._load_pretrained_weights()
+            self._load_pretrained_weights(pretrained_model)
     
-    def _load_pretrained_weights(self):
+    def _load_pretrained_weights(self, pretrained_model: Optional[str] = None):
         """Load pretrained weights if available"""
-        # In practice, you would load from a pretrained ViT checkpoint
-        # For now, we'll use random initialization
-        print("Warning: Using random initialization. Consider loading pretrained ViT weights.")
-        pass
+        try:
+            # Auto-select model based on architecture if not specified
+            if pretrained_model is None:
+                pretrained_model = self._get_default_pretrained_model()
+            
+            if pretrained_model is None:
+                print("Warning: No suitable pretrained model found. Using random initialization.")
+                return
+            
+            print(f"Loading pretrained weights from {pretrained_model}")
+            loaded_count, total_count = load_pretrained_vit_weights(
+                self.vit, pretrained_model, strict=False
+            )
+            
+            if loaded_count > 0:
+                print(f"Successfully loaded {loaded_count}/{total_count} parameters from pretrained weights")
+            else:
+                print("Warning: No parameters were loaded from pretrained weights")
+                
+        except Exception as e:
+            print(f"Warning: Failed to load pretrained weights: {e}")
+            print("Using random initialization instead.")
+    
+    def _get_default_pretrained_model(self) -> Optional[str]:
+        """Get default pretrained model based on architecture parameters"""
+        available_models = list_available_models()
+        
+        # Find best matching model based on embed_dim, depth, num_heads
+        for model_name in available_models:
+            config = get_model_config(model_name)
+            if (config['embed_dim'] == self.embed_dim and 
+                config['depth'] == self.depth and 
+                config['num_heads'] == self.num_heads and
+                config['patch_size'] == self.patch_size):
+                return model_name
+        
+        # Fallback: find closest match by embed_dim
+        if self.embed_dim == 384:
+            return 'vit_small_patch16_224'
+        elif self.embed_dim == 768:
+            return 'vit_base_patch16_224'
+        elif self.embed_dim == 1024:
+            return 'vit_large_patch16_224'
+        
+        return None
     
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
         return self.vit(x)
 
 
 # Factory functions for different ViT sizes
-def vit_base(pretrained: bool = True, **kwargs):
+def vit_base(pretrained: bool = True, pretrained_model: Optional[str] = None, **kwargs):
     """ViT-Base model"""
+    if pretrained_model is None and pretrained:
+        pretrained_model = 'vit_base_patch16_224'
+    
     return ViTBackbone(
         embed_dim=768,
         depth=12,
         num_heads=12,
         pretrained=pretrained,
+        pretrained_model=pretrained_model,
         **kwargs
     )
 
 
-def vit_large(pretrained: bool = True, **kwargs):
+def vit_large(pretrained: bool = True, pretrained_model: Optional[str] = None, **kwargs):
     """ViT-Large model"""
+    if pretrained_model is None and pretrained:
+        pretrained_model = 'vit_large_patch16_224'
+    
     return ViTBackbone(
         embed_dim=1024,
         depth=24,
         num_heads=16,
         pretrained=pretrained,
+        pretrained_model=pretrained_model,
         **kwargs
     )
 
 
-def vit_small(pretrained: bool = True, **kwargs):
+def vit_small(pretrained: bool = True, pretrained_model: Optional[str] = None, **kwargs):
     """ViT-Small model"""
+    if pretrained_model is None and pretrained:
+        pretrained_model = 'vit_small_patch16_224'
+    
     return ViTBackbone(
         embed_dim=384,
         depth=12,
         num_heads=6,
         pretrained=pretrained,
+        pretrained_model=pretrained_model,
         **kwargs
     )
