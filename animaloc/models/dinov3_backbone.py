@@ -81,6 +81,25 @@ class DINOv3Backbone(nn.Module):
         else:
             self.backbone = torch.hub.load('facebookresearch/dinov3', hub_model_name)
 
+        # Load pretrained weights if provided
+        if pretrained_weights and os.path.exists(pretrained_weights):
+            print(f"Loading DINOv3 pretrained weights from: {pretrained_weights}")
+            state_dict = torch.load(pretrained_weights, map_location='cpu')
+            # Handle different state dict formats
+            if 'model' in state_dict:
+                state_dict = state_dict['model']
+            elif 'state_dict' in state_dict:
+                state_dict = state_dict['state_dict']
+
+            # Load the state dict into the backbone
+            missing_keys, unexpected_keys = self.backbone.load_state_dict(state_dict, strict=False)
+            if missing_keys:
+                print(f"Missing keys when loading pretrained weights: {missing_keys[:5]}...")  # Show first 5
+            if unexpected_keys:
+                print(f"Unexpected keys when loading pretrained weights: {unexpected_keys[:5]}...")  # Show first 5
+        elif pretrained_weights:
+            print(f"Warning: Pretrained weights path does not exist: {pretrained_weights}")
+
         # Get model dimensions
         self._setup_model_info()
 
