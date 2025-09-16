@@ -349,6 +349,9 @@ class FeatureAdaptationModule(nn.Module):
         # Create adaptation layers for each level
         self.adaptations = nn.ModuleList()
 
+        # Create pooling layers to generate multi-scale features
+        self.pooling_layers = nn.ModuleList()
+
         for i, (in_ch, out_ch) in enumerate(zip([embed_dim] * len(target_channels), target_channels)):
             adaptation = nn.Sequential(
                 nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False),
@@ -360,12 +363,25 @@ class FeatureAdaptationModule(nn.Module):
             )
             self.adaptations.append(adaptation)
 
+            # Add pooling to create different scales
+            if i > 0:
+                pool_factor = 2 ** i
+                pooling = nn.AvgPool2d(kernel_size=pool_factor, stride=pool_factor)
+            else:
+                pooling = nn.Identity()
+            self.pooling_layers.append(pooling)
+
     def forward(self, features: List[torch.Tensor]) -> List[torch.Tensor]:
-        """Adapt DINOv3 features to target channels"""
+        """Adapt DINOv3 features to target channels and create multi-scale features"""
         adapted_features = []
 
-        for i, (feat, adaptation) in enumerate(zip(features, self.adaptations)):
-            adapted_feat = adaptation(feat)
+        # Use the last feature (highest resolution) as base
+        base_feature = features[-1]
+
+        for i, adaptation in enumerate(self.adaptations):
+            # Apply pooling to create different scales
+            pooled_feat = self.pooling_layers[i](base_feature)
+            adapted_feat = adaptation(pooled_feat)
             adapted_features.append(adapted_feat)
 
         return adapted_features
