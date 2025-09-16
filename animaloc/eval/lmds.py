@@ -205,7 +205,9 @@ class HerdNetLMDS(LMDS):
 
             _, locs, _ = self._lmds(heatmap[b][0])
 
-            cls_idx = torch.argmax(clsmap[b,1:,:,:], dim=0)
+            # Apply softmax to classification logits for consistent probability-based assignment
+            cls_probs = torch.softmax(clsmap[b,1:,:,:], dim=0)
+            cls_idx = torch.argmax(cls_probs, dim=0)
             classes = torch.add(cls_idx, 1)
 
             h_idx = torch.Tensor([l[0] for l in locs]).long()
@@ -213,13 +215,22 @@ class HerdNetLMDS(LMDS):
             labels = classes[h_idx, w_idx].long().tolist()
 
             # Debug: Check classification distribution
-            if hasattr(self, '_debug_enabled') and self._debug_enabled and len(locs) > 0:
+            if hasattr(self, '_debug_enabled') and self._debug_enabled:
+                # Show overall classification distribution
                 unique_classes, counts = torch.unique(classes, return_counts=True)
                 print(f"DEBUG LMDS - Classification distribution: {dict(zip(unique_classes.tolist(), counts.tolist()))}")
-                if len(labels) > 0:
+
+                # Show classification probabilities at detection locations
+                if len(locs) > 0:
                     from collections import Counter
                     label_counts = Counter(labels)
                     print(f"DEBUG LMDS - Detected labels: {dict(label_counts)}")
+
+                    # Show probability ranges for better insight
+                    if len(h_idx) > 0:
+                        detected_probs = cls_probs[:, h_idx, w_idx]  # [num_classes, num_detections]
+                        max_probs = torch.max(detected_probs, dim=0)[0]  # max prob per detection
+                        print(f"DEBUG LMDS - Detection confidence range: {float(torch.min(max_probs)):.3f} - {float(torch.max(max_probs)):.3f}")
 
             chan_idx = cls_idx[h_idx, w_idx].long().tolist()
             scores = cls_scores[b, chan_idx, h_idx, w_idx].float().tolist()
