@@ -21,5 +21,6 @@ from .dla import *
 from .herdnet import *
 from .utils import *
 from .ss_dla import *
+from .dinov3_backbone import *
 
 __all__ = ['MODELS', *MODELS.registry_names]

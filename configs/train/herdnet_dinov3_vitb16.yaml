@@ -1,0 +1,163 @@
+wandb_project: 'camera-traps'
+wandb_entity: 'luis-manrique-car-camera-traps'
+wandb_run: 'camera-traps-dinov3-vitb16-train'
+seed: 1
+device_name: 'cuda'
+
+model:
+  name: 'HerdNetDinoV3'
+  from_torchvision: False
+  load_from: null
+  resume_from: null
+  load_optim: false
+  kwargs:
+    model_name: 'dinov3_vitb16'
+    num_classes: 7
+    pretrained_weights: null  # Set to path/URL for pretrained DINOv3 weights
+    repo_path: '/home/lmanrique/Do/HerdNet/dinov3'  # Local DINOv3 repository path
+    down_ratio: 2
+    head_conv: 64
+    img_size: 512  # Larger input size for better aerial imagery processing
+    feature_layers: [3, 6, 9, 12]  # Multi-scale feature extraction layers
+  freeze: ['backbone']  # Optionally freeze backbone during initial training
+
+losses:
+  FocalLoss:
+    print_name: 'focal_loss'
+    from_torch: False
+    output_idx: 0
+    target_idx: 0
+    lambda_const: 1.0
+    kwargs:
+      reduction: 'mean'
+      normalize: False
+  CrossEntropyLoss:
+    print_name: 'ce_loss'
+    from_torch: True
+    output_idx: 1
+    target_idx: 1
+    lambda_const: 1.0
+    kwargs:
+      reduction: 'mean'
+      weight: [0.1,1.2,1.9,1.16,6.37,12.12,1.0]
+
+datasets:
+  img_size: [512,512]
+  anno_type: 'point'
+  num_classes: 7 # Class 0 (background)
+  collate_fn: null
+
+  class_def:
+    1: 'topi'
+    2: 'buffalo'
+    3: 'kob'
+    4: 'warthog'
+    5: 'waterbuck'
+    6: 'elephant'
+
+  train:
+    name: 'CSVDataset'
+    csv_file: '/path/to/your/file.csv'
+    root_dir: '/path/to/your/images/folder'
+
+    sampler: null
+
+    albu_transforms:
+      Resize:
+        height: 512
+        width: 512
+        p: 1.0
+      HorizontalFlip:
+        p: 0.5
+      VerticalFlip:
+        p: 0.3
+      RandomRotate90:
+        p: 0.5
+      # Enhanced augmentations for DINOv3
+      ColorJitter:
+        brightness: 0.2
+        contrast: 0.2
+        saturation: 0.2
+        hue: 0.1
+        p: 0.5
+      GaussianBlur:
+        blur_limit: [3, 7]
+        p: 0.3
+      MotionBlur:
+        p: 0.3
+      # Standard ImageNet normalization for DINOv3
+      Normalize:
+        mean: [0.485, 0.456, 0.406]
+        std: [0.229, 0.224, 0.225]
+        p: 1.0
+
+    end_transforms:
+      MultiTransformsWrapper:
+        FIDT:
+          num_classes: ${train.datasets.num_classes}
+          down_ratio: ${train.model.kwargs.down_ratio}
+        PointsToMask:
+          radius: 2
+          num_classes: ${train.datasets.num_classes}
+          squeeze: True
+          down_ratio: 32
+
+  validate:
+    name: 'CSVDataset'
+    csv_file: '/path/to/your/file.csv'
+    root_dir: '/path/to/your/images/folder'
+
+    albu_transforms:
+      Resize:
+        height: 512
+        width: 512
+        p: 1.0
+      Normalize:
+        mean: [0.485, 0.456, 0.406]
+        std: [0.229, 0.224, 0.225]
+        p: 1.0
+
+    end_transforms:
+      DownSample:
+        down_ratio: ${train.model.kwargs.down_ratio}
+        anno_type: ${train.datasets.anno_type}
+
+training_settings:
+  trainer: 'Trainer'
+  valid_freq: 1
+  print_freq: 100
+  batch_size: 4  # Reduced batch size due to larger model
+  val_batch_size: 1
+  optimizer: 'adamw'  # AdamW often works better with transformers
+  lr: 5e-5  # Lower learning rate for pretrained transformer
+  weight_decay: 0.05  # Higher weight decay for transformers
+  num_workers:
+    train: 8  # Reduced due to larger memory requirements
+    eval: 8
+  auto_lr:
+    mode: 'max'
+    patience: 15  # Increased patience for transformer training
+    threshold: 1e-4
+    threshold_mode: 'rel'
+    cooldown: 10
+    min_lr: 1e-6
+  warmup_iters: 500  # Longer warmup for transformer
+  vizual_fn: null
+  epochs: 150  # More epochs may be needed for fine-tuning
+  evaluator:
+    name: 'HerdNetEvaluator'
+    threshold: 5
+    select_mode: 'max'
+    validate_on: 'f1_score'
+    kwargs:
+      print_freq: 10
+      lmds_kwargs:
+        kernel_size: [3,3]
+        adapt_ts: 0.3
+  stitcher:
+    name: 'HerdNetStitcher'
+    kwargs:
+      overlap: 0
+      down_ratio: ${train.model.kwargs.down_ratio}
+      up: False
+      reduction: 'mean'
