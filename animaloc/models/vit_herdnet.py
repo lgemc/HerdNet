@@ -182,9 +182,13 @@ class ViTHerdNet(nn.Module):
         self.decoder = ViTDecoder(self.channels, target_channels=head_conv)
         
         # Classification head (operates on deepest features)
+        # Need to downsample to match target resolution (32x32 -> 16x16 for patch_size=16)
         self.cls_head = nn.Sequential(
             nn.Conv2d(self.channels[-1], head_conv, kernel_size=3, padding=1, bias=True),
             nn.ReLU(inplace=True),
+            nn.Conv2d(head_conv, head_conv, kernel_size=3, padding=1, bias=True),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),  # Downsample from 32x32 to 16x16
             nn.Conv2d(head_conv, self.num_classes, kernel_size=1, stride=1, padding=0, bias=True)
         )
         
