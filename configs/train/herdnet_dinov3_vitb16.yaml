@@ -129,8 +129,9 @@ training_settings:
   batch_size: 4  # Reduced batch size due to larger model
   val_batch_size: 1
   optimizer: 'adamw'  # AdamW often works better with transformers
-  lr: 5e-5  # Lower learning rate for pretrained transformer
+  lr: 1e-5  # Even lower learning rate for stable DINOv3 training
   weight_decay: 0.05  # Higher weight decay for transformers
+  grad_clip_norm: 1.0  # Gradient clipping for stability
   num_workers:
     train: 8  # Reduced due to larger memory requirements
     eval: 8

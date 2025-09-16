@@ -44,22 +44,23 @@ class Trainer:
     ''' Base class for training a model '''
 
     def __init__(
-        self, 
-        model: torch.nn.Module, 
-        train_dataloader: torch.utils.data.DataLoader, 
-        optimizer: torch.optim.Optimizer, 
-        num_epochs: int, 
-        lr_milestones: Optional[List[int]] = None,  
+        self,
+        model: torch.nn.Module,
+        train_dataloader: torch.utils.data.DataLoader,
+        optimizer: torch.optim.Optimizer,
+        num_epochs: int,
+        lr_milestones: Optional[List[int]] = None,
         auto_lr: Union[bool, dict] = False,
         adaloss: Optional[str] = None,
         val_dataloader: Optional[torch.utils.data.DataLoader] = None,
         evaluator: Optional[Evaluator] = None,
         vizual_fn: Optional[Callable] = None,
-        work_dir: Optional[str] = None, 
-        device_name: str = 'cuda', 
+        work_dir: Optional[str] = None,
+        device_name: str = 'cuda',
         print_freq: int = 50,
         valid_freq: int = 1,
-        csv_logger: bool = False
+        csv_logger: bool = False,
+        grad_clip_norm: Optional[float] = None
         ) -> None:
         '''
         Args:
@@ -114,6 +115,9 @@ class Trainer:
             csv_logger (bool, optional): set to True to store logs in a CSV file. Warning, long
                 training session might slow down the process.
                 Defaults to False.
+            grad_clip_norm (float, optional): maximum norm of the gradients for gradient clipping.
+                If None, no gradient clipping is applied.
+                Defaults to None.
         '''
 
         assert isinstance(model, torch.nn.Module), \
@@ -160,6 +164,7 @@ class Trainer:
         self.valid_freq = valid_freq
         self.lr_milestones = lr_milestones
         self.evaluator = evaluator
+        self.grad_clip_norm = grad_clip_norm
 
         self.vizual_fn = vizual_fn
 
@@ -536,6 +541,11 @@ class Trainer:
                 sys.exit(1)
 
             self.losses.backward()
+
+            # Apply gradient clipping if specified
+            if self.grad_clip_norm is not None and self.grad_clip_norm > 0:
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip_norm)
+
             self.optimizer.step()
 
             if self.adaloss is not None:

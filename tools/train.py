@@ -316,16 +316,25 @@ def main(cfg: DictConfig) -> None:
                 model.model.freeze(layers=list(cfg.model.freeze))
                 print(f"Layers {list(cfg.model.freeze)} freezed")
     
+    # Extract gradient clipping parameter
+    grad_clip_norm = getattr(cfg.training_settings, 'grad_clip_norm', None)
+
     if cfg.training_settings.optimizer == 'adam':
         optimizer = torch.optim.Adam(
-            model.parameters(), 
-            lr = cfg.training_settings.lr, 
+            model.parameters(),
+            lr = cfg.training_settings.lr,
+            weight_decay = cfg.training_settings.weight_decay
+            )
+    elif cfg.training_settings.optimizer == 'adamw':
+        optimizer = torch.optim.AdamW(
+            model.parameters(),
+            lr = cfg.training_settings.lr,
             weight_decay = cfg.training_settings.weight_decay
             )
     else:
         optimizer = torch.optim.SGD(
-            model.parameters(), 
-            lr = cfg.training_settings.lr, 
+            model.parameters(),
+            lr = cfg.training_settings.lr,
             weight_decay = cfg.training_settings.weight_decay
             )
     
@@ -355,19 +364,20 @@ def main(cfg: DictConfig) -> None:
         vizual_fn = animaloc.vizual.plots.__dict__[cfg.training_settings.vizual_fn]
 
     trainer = animaloc.train.trainers.__dict__[cfg.training_settings.trainer](
-        model, 
-        train_dataloader, 
-        optimizer = optimizer, 
-        num_epochs = cfg.training_settings.epochs, 
+        model,
+        train_dataloader,
+        optimizer = optimizer,
+        num_epochs = cfg.training_settings.epochs,
         auto_lr = auto_lr,
         # adaloss = cfg.training_settings.adaloss,
-        val_dataloader = val_dataloader, 
+        val_dataloader = val_dataloader,
         evaluator = evaluator,
         device_name = cfg.device_name,
         vizual_fn = vizual_fn,
         work_dir = work_dir,
         print_freq = cfg.training_settings.print_freq,
         valid_freq = cfg.training_settings.valid_freq,
+        grad_clip_norm = grad_clip_norm,
         )
     
     if cfg.model.resume_from is not None:
