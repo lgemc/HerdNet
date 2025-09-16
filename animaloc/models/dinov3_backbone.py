@@ -418,8 +418,9 @@ class HerdNetDinoV3(nn.Module):
             img_size=img_size
         )
 
-        # Target channels similar to DLA structure
-        target_channels = [64, 128, 256, 512, 1024][:len(feature_layers)+1]
+        # Target channels similar to DLA structure - adjust based on actual feature layers
+        num_levels = len(feature_layers) + 1  # +1 for final output
+        target_channels = [64, 128, 256, 512][:num_levels]  # Remove 1024 to match actual outputs
 
         # Feature adaptation
         self.feature_adapter = FeatureAdaptationModule(
@@ -439,9 +440,10 @@ class HerdNetDinoV3(nn.Module):
             scales=scales
         )
 
-        # Bottleneck convolution
+        # Bottleneck convolution - use actual final adapted channel count
+        final_channels = target_channels[-1]
         self.bottleneck_conv = nn.Conv2d(
-            target_channels[-1], target_channels[-1],
+            final_channels, final_channels,
             kernel_size=1, stride=1,
             padding=0, bias=True
         )
@@ -463,7 +465,7 @@ class HerdNetDinoV3(nn.Module):
 
         # Classification head
         self.cls_head = nn.Sequential(
-            nn.Conv2d(target_channels[-1], head_conv,
+            nn.Conv2d(final_channels, head_conv,
                      kernel_size=3, padding=1, bias=True),
             nn.ReLU(inplace=True),
             nn.Conv2d(
