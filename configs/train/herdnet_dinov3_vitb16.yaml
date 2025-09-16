@@ -100,7 +100,7 @@ datasets:
           radius: 2
           num_classes: ${train.datasets.num_classes}
           squeeze: True
-          down_ratio: 32
+          down_ratio: ${train.model.kwargs.down_ratio}
 
   validate:
     name: 'CSVDataset'
