@@ -153,7 +153,7 @@ class HerdNetLMDS(LMDS):
         self,
         up: bool = True,
         kernel_size: tuple = (3,3),
-        adapt_ts: float = 0.1,
+        adapt_ts: float = 0.3,
         neg_ts: float = 0.1
         ) -> None:
         '''
@@ -163,7 +163,7 @@ class HerdNetLMDS(LMDS):
             kernel_size (tuple, optional): size of the kernel used to select local
                 maxima. Defaults to (3,3) (as in the paper).
             adapt_ts (float, optional): adaptive threshold to select final points
-                from candidates. Defaults to 0.1.
+                from candidates. Defaults to 0.3.
             neg_ts (float, optional): negative sample threshold used to define if 
                 an image is a negative sample or not. Defaults to 0.1 (as in the paper).
         '''
@@ -211,6 +211,15 @@ class HerdNetLMDS(LMDS):
             h_idx = torch.Tensor([l[0] for l in locs]).long()
             w_idx = torch.Tensor([l[1] for l in locs]).long()
             labels = classes[h_idx, w_idx].long().tolist()
+
+            # Debug: Check classification distribution
+            if hasattr(self, '_debug_enabled') and self._debug_enabled and len(locs) > 0:
+                unique_classes, counts = torch.unique(classes, return_counts=True)
+                print(f"DEBUG LMDS - Classification distribution: {dict(zip(unique_classes.tolist(), counts.tolist()))}")
+                if len(labels) > 0:
+                    from collections import Counter
+                    label_counts = Counter(labels)
+                    print(f"DEBUG LMDS - Detected labels: {dict(label_counts)}")
 
             chan_idx = cls_idx[h_idx, w_idx].long().tolist()
             scores = cls_scores[b, chan_idx, h_idx, w_idx].float().tolist()

@@ -372,6 +372,7 @@ class HerdNetEvaluator(Evaluator):
         }
         print(f"DEBUG - Heatmap stats: min={heatmap_stats['min']:.4f}, max={heatmap_stats['max']:.4f}, "
               f"mean={heatmap_stats['mean']:.4f}, std={heatmap_stats['std']:.4f}")
+        print(f"DEBUG - Clsmap shape: {clsmap.shape}, min={float(clsmap.min()):.4f}, max={float(clsmap.max()):.4f}")
         print(f"DEBUG - LMDS detected {len(labels[0]) if labels and labels[0] else 0} objects, "
               f"GT has {len(gt_labels)} objects")
 
