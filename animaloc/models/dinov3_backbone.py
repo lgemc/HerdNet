@@ -434,9 +434,16 @@ class HerdNetDinoV3(nn.Module):
             img_size=img_size
         )
 
-        # Target channels similar to DLA structure - adjust based on actual feature layers
-        num_levels = len(feature_layers) + 1  # +1 for final output
-        target_channels = [64, 128, 256, 512][:num_levels]  # Remove 1024 to match actual outputs
+        # Target channels similar to DLA structure
+        # Use minimal set required for the down_ratio upsampling
+        self.first_level = int(math.log2(down_ratio))
+
+        # Define base channels matching typical DLA structure
+        base_channels = [64, 128, 256, 512]
+
+        # We need at least first_level+1 layers for upsampling
+        min_levels_needed = self.first_level + 1
+        target_channels = base_channels[:min_levels_needed]
 
         # Feature adaptation
         self.feature_adapter = FeatureAdaptationModule(
@@ -449,7 +456,6 @@ class HerdNetDinoV3(nn.Module):
         from . import dla as dla_modules
 
         # Setup upsampling similar to HerdNet
-        self.first_level = int(math.log2(down_ratio))
         scales = [2 ** i for i in range(len(target_channels[self.first_level:]))]
         self.dla_up = dla_modules.DLAUp(
             target_channels[self.first_level:],
@@ -510,7 +516,17 @@ class HerdNetDinoV3(nn.Module):
 
         # Generate outputs
         heatmap = self.loc_head(decode_hm)
-        clsmap = self.cls_head(bottleneck)
+        clsmap = self.cls_head(decode_hm)  # Use decode_hm instead of bottleneck
+
+        # Apply upsampling to match input resolution if needed
+        if self.down_ratio > 1:
+            target_h, target_w = input.shape[2] // self.down_ratio, input.shape[3] // self.down_ratio
+
+            if heatmap.shape[2] != target_h or heatmap.shape[3] != target_w:
+                heatmap = F.interpolate(heatmap, size=(target_h, target_w), mode='bilinear', align_corners=False)
+
+            if clsmap.shape[2] != target_h or clsmap.shape[3] != target_w:
+                clsmap = F.interpolate(clsmap, size=(target_h, target_w), mode='bilinear', align_corners=False)
 
         return heatmap, clsmap
 
