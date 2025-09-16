@@ -231,7 +231,17 @@ class HerdNetStitcher(Stitcher):
             patch = patch[0].to(self.device)
             outputs = self.model(patch)
             # Handle different model output formats
-            if isinstance(outputs, (list, tuple)) and len(outputs) == 1:
+            if isinstance(outputs, dict):
+                # For models that return {'heatmap': ..., 'clsmap': ...} or similar
+                if 'heatmap' in outputs and 'clsmap' in outputs:
+                    heatmap, clsmap = outputs['heatmap'], outputs['clsmap']
+                elif len(outputs) == 2:
+                    # If dict has 2 items, assume first is heatmap, second is clsmap
+                    keys = list(outputs.keys())
+                    heatmap, clsmap = outputs[keys[0]], outputs[keys[1]]
+                else:
+                    raise ValueError(f"Unexpected dict output format: {outputs.keys()}")
+            elif isinstance(outputs, (list, tuple)) and len(outputs) == 1:
                 # For models that return [(heatmap, clsmap)]
                 heatmap, clsmap = outputs[0]
             elif isinstance(outputs, (list, tuple)) and len(outputs) == 2:
