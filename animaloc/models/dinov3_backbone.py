@@ -488,9 +488,9 @@ class HerdNetDinoV3(nn.Module):
         # so sigmoid starts at 0.5, allowing the model to learn both positive and negative adjustments
         self.loc_head[-2].bias.data.fill_(0.00)  # Reset to neutral initialization
 
-        # Classification head
+        # Classification head - use final channels like original HerdNet
         self.cls_head = nn.Sequential(
-            nn.Conv2d(target_channels[self.first_level], head_conv,
+            nn.Conv2d(target_channels[-1], head_conv,
                      kernel_size=3, padding=1, bias=True),
             nn.ReLU(inplace=True),
             nn.Conv2d(
@@ -519,7 +519,7 @@ class HerdNetDinoV3(nn.Module):
 
         # Generate outputs
         heatmap = self.loc_head(decode_hm)
-        clsmap = self.cls_head(decode_hm)  # Use decode_hm instead of bottleneck
+        clsmap = self.cls_head(bottleneck)  # Use bottleneck features like original HerdNet
 
         # Apply upsampling to match input resolution if needed
         if self.down_ratio > 1:

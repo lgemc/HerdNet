@@ -325,15 +325,19 @@ class Evaluator:
 @EVALUATORS.register()
 class HerdNetEvaluator(Evaluator):
 
-    def __init__(self, model: torch.nn.Module, dataloader: torch.utils.data.DataLoader, metrics: Metrics, 
-        lmds_kwargs: dict = {'kernel_size': (3,3)}, device_name: str = 'cuda', print_freq: int = 10, 
-        stitcher: Optional[Stitcher] = None, vizual_fn: Optional[Callable] = None, work_dir: Optional[str] = None, 
-        header: Optional[str] = None
+    def __init__(self, model: torch.nn.Module, dataloader: torch.utils.data.DataLoader, metrics: Metrics,
+        lmds_kwargs: dict = {'kernel_size': (3,3)}, device_name: str = 'cuda', print_freq: int = 10,
+        stitcher: Optional[Stitcher] = None, vizual_fn: Optional[Callable] = None, work_dir: Optional[str] = None,
+        header: Optional[str] = None, optimize_threshold: bool = False, threshold_range: List[float] = None
         ) -> None:
-        super().__init__(model, dataloader, metrics, device_name=device_name, print_freq=print_freq, 
+        super().__init__(model, dataloader, metrics, device_name=device_name, print_freq=print_freq,
             vizual_fn=vizual_fn, stitcher=stitcher, work_dir=work_dir, header=header)
 
         self.lmds_kwargs = lmds_kwargs
+        self.optimize_threshold = optimize_threshold
+        self.threshold_range = threshold_range or [0.01, 0.02, 0.03, 0.05, 0.07, 0.1, 0.15, 0.2, 0.3]
+        self.optimal_threshold = None
+        self.threshold_results = {}
 
     def prepare_data(self, images: Any, targets: Any) -> tuple:        
         return images.to(self.device), targets
@@ -396,6 +400,127 @@ class HerdNetEvaluator(Evaluator):
         )
 
         return dict(gt = gt, preds = preds, est_count = class_counts)
+
+    @torch.no_grad()
+    def optimize_adapt_threshold(self, returns: str = 'f1_score', wandb_flag: bool = False) -> float:
+        """
+        Find optimal adapt_ts threshold by testing multiple values and selecting the one with best performance.
+
+        Args:
+            returns (str): metric to optimize ('f1_score', 'recall', 'precision', etc.)
+            wandb_flag (bool): whether to log results to wandb
+
+        Returns:
+            float: optimal threshold value
+        """
+        print(f"\n[THRESHOLD OPTIMIZATION] Testing thresholds: {self.threshold_range}")
+        print(f"[THRESHOLD OPTIMIZATION] Optimizing for: {returns}")
+
+        best_score = -1
+        best_threshold = self.threshold_range[0]
+
+        # Store original threshold for restoration
+        original_threshold = self.lmds_kwargs.get('adapt_ts', 0.3)
+
+        for threshold in self.threshold_range:
+            print(f"\n[THRESHOLD OPTIMIZATION] Testing adapt_ts={threshold:.3f}")
+
+            # Update threshold
+            self.lmds_kwargs['adapt_ts'] = threshold
+
+            # Evaluate with current threshold
+            self.model.eval()
+            self.metrics.flush()
+
+            for i, (images, targets) in enumerate(self.dataloader):
+                images, targets = self.prepare_data(images, targets)
+
+                if self.stitcher is not None:
+                    output = self.stitcher(images[0])
+                    output = self.post_stitcher(output)
+                else:
+                    output, _ = self.model(images)
+
+                output_dict = self.prepare_feeding(targets, output)
+                self.metrics.feed(**output_dict)
+
+            # Get performance score
+            self.metrics.aggregate()
+
+            if returns == 'f1_score':
+                score = self.metrics.fbeta_score()
+            elif returns == 'recall':
+                score = self.metrics.recall()
+            elif returns == 'precision':
+                score = self.metrics.precision()
+            elif returns == 'mae':
+                score = -self.metrics.mae()  # Negative because lower is better
+            elif returns == 'mse':
+                score = -self.metrics.mse()  # Negative because lower is better
+            elif returns == 'rmse':
+                score = -self.metrics.rmse()  # Negative because lower is better
+            else:
+                score = self.metrics.fbeta_score()  # Default to f1_score
+
+            # Store results
+            self.threshold_results[threshold] = {
+                'score': score,
+                'recall': self.metrics.recall(),
+                'precision': self.metrics.precision(),
+                'f1_score': self.metrics.fbeta_score(),
+                'mae': self.metrics.mae(),
+                'mse': self.metrics.mse(),
+                'rmse': self.metrics.rmse()
+            }
+
+            print(f"[THRESHOLD OPTIMIZATION] adapt_ts={threshold:.3f} -> {returns}={score:.4f}, "
+                  f"F1={self.metrics.fbeta_score():.4f}, R={self.metrics.recall():.4f}, "
+                  f"P={self.metrics.precision():.4f}")
+
+            # Update best threshold
+            if score > best_score:
+                best_score = score
+                best_threshold = threshold
+
+            # Reset metrics for next iteration
+            self.metrics.flush()
+
+        # Set optimal threshold
+        self.optimal_threshold = best_threshold
+        self.lmds_kwargs['adapt_ts'] = best_threshold
+
+        print(f"\n[THRESHOLD OPTIMIZATION] OPTIMAL THRESHOLD: adapt_ts={best_threshold:.3f}")
+        print(f"[THRESHOLD OPTIMIZATION] Best {returns}: {best_score:.4f}")
+
+        # Log to wandb if requested
+        if wandb_flag:
+            threshold_table = wandb.Table(columns=["adapt_ts", "f1_score", "recall", "precision", "mae", "mse", "rmse"])
+            for thresh, results in self.threshold_results.items():
+                threshold_table.add_data(thresh, results['f1_score'], results['recall'],
+                                       results['precision'], results['mae'], results['mse'], results['rmse'])
+
+            wandb.log({
+                "threshold_optimization": threshold_table,
+                "optimal_threshold": best_threshold,
+                f"optimal_{returns}": best_score
+            })
+
+        return best_threshold
+
+    @torch.no_grad()
+    def evaluate(self, returns: str = 'recall', wandb_flag: bool = False, viz: bool = False,
+        log_meters: bool = True) -> float:
+        """
+        Enhanced evaluate method with optional threshold optimization.
+        """
+        # Run threshold optimization if requested
+        if self.optimize_threshold and self.optimal_threshold is None:
+            print(f"\n[EVALUATION] Running threshold optimization...")
+            self.optimize_adapt_threshold(returns=returns, wandb_flag=wandb_flag)
+            print(f"[EVALUATION] Using optimal threshold: {self.optimal_threshold:.3f}")
+
+        # Run standard evaluation with optimal threshold
+        return super().evaluate(returns=returns, wandb_flag=wandb_flag, viz=viz, log_meters=log_meters)
 
 @EVALUATORS.register()
 class DensityMapEvaluator(Evaluator):
