@@ -229,10 +229,19 @@ class HerdNetStitcher(Stitcher):
         maps = []
         for patch in dataloader:
             patch = patch[0].to(self.device)
-            outputs = self.model(patch)[0]
-            heatmap = outputs[0]
+            outputs = self.model(patch)
+            # Handle different model output formats
+            if isinstance(outputs, (list, tuple)) and len(outputs) == 1:
+                # For models that return [(heatmap, clsmap)]
+                heatmap, clsmap = outputs[0]
+            elif isinstance(outputs, (list, tuple)) and len(outputs) == 2:
+                # For models that return (heatmap, clsmap) directly
+                heatmap, clsmap = outputs
+            else:
+                raise ValueError(f"Unexpected model output format: {type(outputs)}")
+
             scale_factor = 16
-            clsmap = F.interpolate(outputs[1], scale_factor=scale_factor, mode='nearest')
+            clsmap = F.interpolate(clsmap, scale_factor=scale_factor, mode='nearest')
             # cat
             outmaps = torch.cat([heatmap, clsmap], dim=1)
             maps = [*maps, *outmaps.unsqueeze(0)]
