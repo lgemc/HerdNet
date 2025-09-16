@@ -143,6 +143,8 @@ def convert_jax_to_pytorch_key(jax_key: str) -> str:
         'Transformer/posembed_input/pos_embedding': 'pos_embed',
         'head/kernel': 'head.weight',
         'head/bias': 'head.bias',
+        'Transformer/encoder_norm/scale': 'norm.weight',
+        'Transformer/encoder_norm/bias': 'norm.bias',
     }
     
     # Handle transformer blocks
@@ -231,7 +233,12 @@ def convert_jax_weights_to_pytorch(jax_weights: Dict[str, np.ndarray], model_con
             weight = weight.transpose(0, 1)
         elif jax_key == 'cls':
             # Class token: correct shape for PyTorch ViT (1, 1, embed_dim)
-            weight = weight.unsqueeze(0)  # Add batch dimension only
+            if weight.dim() == 2 and weight.shape[0] == 1:
+                # Already correct shape (1, embed_dim), just add sequence dimension
+                weight = weight.unsqueeze(1)  # (1, embed_dim) -> (1, 1, embed_dim)
+            else:
+                # Remove any extra dimensions and ensure correct shape
+                weight = weight.squeeze().unsqueeze(0).unsqueeze(0)  # -> (1, 1, embed_dim)
         elif 'pos_embedding' in jax_key:
             # Position embedding: already correct shape
             pass
@@ -266,11 +273,15 @@ def convert_jax_weights_to_pytorch(jax_weights: Dict[str, np.ndarray], model_con
 
         pytorch_weights[pytorch_key] = weight
 
-    # Concatenate Q, K, V weights
+    # Concatenate Q, K, V weights and add missing bias terms
     for block_num, qkv_dict in qkv_weights.items():
         if 'q' in qkv_dict and 'k' in qkv_dict and 'v' in qkv_dict:
             concatenated_qkv = torch.cat([qkv_dict['q'], qkv_dict['k'], qkv_dict['v']], dim=0)
             pytorch_weights[f'blocks.{block_num}.attention.qkv.weight'] = concatenated_qkv
+
+            # JAX models typically don't have QKV bias, but PyTorch models expect them
+            # Initialize them to zeros
+            pytorch_weights[f'blocks.{block_num}.attention.qkv.bias'] = torch.zeros(embed_dim * 3)
 
     return pytorch_weights
 
@@ -355,6 +366,14 @@ def load_pretrained_vit_weights(model: nn.Module, model_name: str, strict: bool 
     model_state = model.state_dict()
     filtered_weights = {}
 
+    # Define keys that should be skipped (custom layers not in pretrained weights)
+    custom_keys = {
+        'feature_projs.0.weight', 'feature_projs.0.bias',
+        'feature_projs.1.weight', 'feature_projs.1.bias',
+        'feature_projs.2.weight', 'feature_projs.2.bias',
+        'feature_projs.3.weight', 'feature_projs.3.bias'
+    }
+
     for key, weight in pytorch_weights.items():
         if key in model_state:
             if key == 'pos_embed':
@@ -369,7 +388,9 @@ def load_pretrained_vit_weights(model: nn.Module, model_name: str, strict: bool 
             else:
                 print(f"Shape mismatch for {key}: pretrained {weight.shape} vs model {model_state[key].shape}")
         else:
-            print(f"Key not found in model: {key}")
+            # Only report missing keys if they're not custom layers
+            if key not in custom_keys:
+                print(f"Key not found in model: {key}")
 
     # Load weights
     loaded_keys = model.load_state_dict(filtered_weights, strict=strict)
@@ -378,15 +399,21 @@ def load_pretrained_vit_weights(model: nn.Module, model_name: str, strict: bool 
         missing_keys = loaded_keys.missing_keys
         unexpected_keys = loaded_keys.unexpected_keys
 
-        if missing_keys:
-            print(f"Missing keys: {missing_keys}")
+        # Filter out expected missing keys (custom layers)
+        filtered_missing = [k for k in missing_keys if k not in custom_keys]
+
+        if filtered_missing:
+            print(f"Missing keys: {filtered_missing}")
         if unexpected_keys:
             print(f"Unexpected keys: {unexpected_keys}")
 
     loaded_count = len(filtered_weights)
     total_count = len(model_state)
+    expected_missing = len([k for k in model_state.keys() if k in custom_keys])
 
     print(f"Loaded {loaded_count}/{total_count} parameters from pretrained weights")
+    if expected_missing > 0:
+        print(f"Note: {expected_missing} custom layers (feature_projs) initialized randomly as expected")
 
     return loaded_count, total_count
 
