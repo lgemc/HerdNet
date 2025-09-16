@@ -339,8 +339,25 @@ class HerdNetEvaluator(Evaluator):
         return images.to(self.device), targets
     
     def post_stitcher(self, output: torch.Tensor) -> Any:
+        # Debug: Log output statistics
+        print(f"[DEBUG] Stitcher output shape: {output.shape}")
+
+        # Fix: The output should be [B, 1+num_classes, H, W] = [B, 7, H, W]
+        # But we're getting [B, 2048, H, W] which means the stitcher is wrong
+        expected_channels = 7  # 1 heatmap + 6 classes
+        if output.shape[1] != expected_channels:
+            print(f"[DEBUG] ERROR: Expected {expected_channels} channels, got {output.shape[1]}")
+            print(f"[DEBUG] Taking first {expected_channels} channels as workaround")
+            output = output[:, :expected_channels, :, :]
+
         heatmap = output[:,:1,:,:]
         clsmap = output[:,1:,:,:]
+
+        print(f"[DEBUG] Corrected heatmap shape: {heatmap.shape}")
+        print(f"[DEBUG] Corrected clsmap shape: {clsmap.shape}")
+        print(f"[DEBUG] Heatmap range: [{heatmap.min():.4f}, {heatmap.max():.4f}]")
+        print(f"[DEBUG] Clsmap range: [{clsmap.min():.4f}, {clsmap.max():.4f}]")
+
         return heatmap, clsmap
 
     def prepare_feeding(self, targets: Dict[str, torch.Tensor], output: List[torch.Tensor]) -> dict:
@@ -357,8 +374,21 @@ class HerdNetEvaluator(Evaluator):
         if self.stitcher is not None:
             up = False
 
+        # Debug: Log ground truth info
+        print(f"[DEBUG] GT coords count: {len(gt_coords)}")
+        print(f"[DEBUG] GT labels: {gt_labels}")
+        if gt_coords:
+            print(f"[DEBUG] GT coords sample: {gt_coords[:3]}")
+
         lmds = HerdNetLMDS(up=up, **self.lmds_kwargs)
         counts, locs, labels, scores, dscores = lmds(output)
+
+        # Debug: Log LMDS output
+        print(f"[DEBUG] LMDS raw detections: {len(locs[0]) if len(locs) > 0 else 0}")
+        print(f"[DEBUG] LMDS labels: {labels[0][:10] if len(labels) > 0 and len(labels[0]) > 0 else []}")
+        print(f"[DEBUG] LMDS scores range: [{min(scores[0]) if len(scores) > 0 and len(scores[0]) > 0 else 'N/A'}, {max(scores[0]) if len(scores) > 0 and len(scores[0]) > 0 else 'N/A'}]")
+        if len(locs) > 0 and len(locs[0]) > 0:
+            print(f"[DEBUG] LMDS coords sample: {locs[0][:3]}")
 
         # Convert spatial counts to per-class counts
         # LMDS returns spatial counts, but we need class-based counts
@@ -373,6 +403,9 @@ class HerdNetEvaluator(Evaluator):
         for label in pred_labels:
             if 1 <= label <= 6:  # Valid animal classes
                 class_counts[label - 1] += 1  # label-1 because we exclude background
+
+        print(f"[DEBUG] Final class counts: {class_counts}")
+        print(f"[DEBUG] Total predicted detections: {sum(class_counts)}")
 
         preds = dict(
             loc = locs[0],
