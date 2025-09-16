@@ -230,6 +230,7 @@ class HerdNetStitcher(Stitcher):
         for patch in dataloader:
             patch = patch[0].to(self.device)
             outputs = self.model(patch)
+
             # Handle different model output formats
             if isinstance(outputs, dict):
                 # For models that return {'heatmap': ..., 'clsmap': ...} or similar
@@ -245,12 +246,24 @@ class HerdNetStitcher(Stitcher):
                 # For models that return [(heatmap, clsmap)]
                 heatmap, clsmap = outputs[0]
             elif isinstance(outputs, (list, tuple)) and len(outputs) == 2:
-                # For models that return (heatmap, clsmap) directly
-                heatmap, clsmap = outputs
+                # Check if first element is a tuple (the actual model output) and second is dict (metadata)
+                if isinstance(outputs[0], (list, tuple)) and isinstance(outputs[1], dict):
+                    # Model returns ((heatmap, clsmap), metadata_dict)
+                    heatmap, clsmap = outputs[0]
+                else:
+                    # For models that return (heatmap, clsmap) directly
+                    heatmap, clsmap = outputs
             else:
                 raise ValueError(f"Unexpected model output format: {type(outputs)}")
 
+            # Ensure heatmap and clsmap are tensors, not dicts
+            if isinstance(heatmap, dict):
+                raise ValueError(f"heatmap is still a dict after extraction: {heatmap.keys()}")
+            if isinstance(clsmap, dict):
+                raise ValueError(f"clsmap is still a dict after extraction: {clsmap.keys()}")
+
             scale_factor = 16
+            heatmap = F.interpolate(heatmap, scale_factor=scale_factor, mode='bilinear', align_corners=False)
             clsmap = F.interpolate(clsmap, scale_factor=scale_factor, mode='nearest')
             # cat
             outmaps = torch.cat([heatmap, clsmap], dim=1)

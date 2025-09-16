@@ -359,15 +359,29 @@ class HerdNetEvaluator(Evaluator):
 
         lmds = HerdNetLMDS(up=up, **self.lmds_kwargs)
         counts, locs, labels, scores, dscores = lmds(output)
-        
+
+        # Convert spatial counts to per-class counts
+        # LMDS returns spatial counts, but we need class-based counts
+        # Use the labels to aggregate counts by class
+        pred_labels = labels[0] if len(labels) > 0 and len(labels[0]) > 0 else []
+
+        # Initialize per-class counts (excluding background class 0)
+        num_classes = 7  # From config: background + 6 animal classes
+        class_counts = [0] * (num_classes - 1)  # Exclude background class
+
+        # Count detections per class (classes 1-6)
+        for label in pred_labels:
+            if 1 <= label <= 6:  # Valid animal classes
+                class_counts[label - 1] += 1  # label-1 because we exclude background
+
         preds = dict(
             loc = locs[0],
             labels = labels[0],
             scores = scores[0],
             dscores = dscores[0]
         )
-        
-        return dict(gt = gt, preds = preds, est_count = counts[0])
+
+        return dict(gt = gt, preds = preds, est_count = class_counts)
 
 @EVALUATORS.register()
 class DensityMapEvaluator(Evaluator):
@@ -387,7 +401,10 @@ class DensityMapEvaluator(Evaluator):
         masks = F.one_hot(idx, num_classes=output.shape[1]).permute(0,3,1,2)
         output = (output * masks)
         est_counts = output[0].sum(2).sum(1).tolist()
-        
+
+        # Exclude background class (index 0) to match metrics initialization
+        est_counts = est_counts[1:]  # Remove background class count
+
         return dict(gt = gt, preds = preds, est_count = est_counts)
 
 @EVALUATORS.register()
