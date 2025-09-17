@@ -127,7 +127,7 @@ training_settings:
   val_batch_size: 1
   optimizer: 'adamw'  # AdamW works well with ConvNeXt
   lr: 2e-4  # Slightly higher learning rate for ConvNeXt
-  weight_decay: 0.05  # Higher weight decay for transformers
+  weight_decay: 0.0005  # Match baseline weight decay
   grad_clip_norm: 1.0  # Gradient clipping for stability
   num_workers:
     train: 8
