@@ -130,7 +130,7 @@ training_settings:
       print_freq: 10
       lmds_kwargs:
         kernel_size: [3,3]
-        adapt_ts: 0.3
+        adapt_ts: 0.15
   stitcher:
     name: 'HerdNetStitcher'
     kwargs:
