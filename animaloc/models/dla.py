@@ -325,9 +325,16 @@ class DLA(nn.Module):
             # Try local file first, then fallback to URL
             import os
             local_path = f'{name}-{hash}.pth'
+            # Also check in current working directory
             if os.path.exists(local_path):
-                model_weights = torch.load(local_path)
+                print(f"Loading local weights from: {local_path}")
+                model_weights = torch.load(local_path, map_location='cpu')
+            elif os.path.exists(os.path.join(os.getcwd(), local_path)):
+                full_path = os.path.join(os.getcwd(), local_path)
+                print(f"Loading local weights from: {full_path}")
+                model_weights = torch.load(full_path, map_location='cpu')
             else:
+                print(f"Local weights not found, downloading from URL...")
                 model_url = get_model_url(data, name, hash)
                 model_weights = model_zoo.load_url(model_url)
         num_classes = len(model_weights[list(model_weights.keys())[-1]])
