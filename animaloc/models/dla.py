@@ -324,15 +324,21 @@ class DLA(nn.Module):
         else:
             # Try local file first, then fallback to URL
             import os
-            local_path = f'{name}-{hash}.pth'
-            # Also check in current working directory
+
+            # Find project root by looking for setup.py or pyproject.toml
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = current_dir
+            while project_root != '/':
+                if os.path.exists(os.path.join(project_root, 'setup.py')) or \
+                   os.path.exists(os.path.join(project_root, 'pyproject.toml')):
+                    break
+                project_root = os.path.dirname(project_root)
+
+            local_path = os.path.join(project_root, f'{name}-{hash}.pth')
+
             if os.path.exists(local_path):
                 print(f"Loading local weights from: {local_path}")
                 model_weights = torch.load(local_path, map_location='cpu')
-            elif os.path.exists(os.path.join(os.getcwd(), local_path)):
-                full_path = os.path.join(os.getcwd(), local_path)
-                print(f"Loading local weights from: {full_path}")
-                model_weights = torch.load(full_path, map_location='cpu')
             else:
                 print(f"Local weights not found, downloading from URL...")
                 model_url = get_model_url(data, name, hash)
