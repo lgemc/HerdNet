@@ -1,0 +1,161 @@
+wandb_project: 'camera-traps'
+wandb_entity: 'luis-manrique-car-camera-traps'
+wandb_run: 'camera-traps-convnext-train'
+seed: 1
+device_name: 'cuda'
+
+model:
+  name: 'HerdNetConvNeXt'
+  from_torchvision: False
+  load_from: null
+  resume_from: null
+  load_optim: false
+  kwargs:
+    model_name: 'convnext_base'  # Options: convnext_tiny, convnext_small, convnext_base, convnext_large
+    num_classes: 7
+    pretrained: True  # Load ImageNet pretrained weights
+    down_ratio: 2
+    head_conv: 64
+  freeze: null  # Options: ['backbone'] to freeze ConvNeXt backbone
+
+losses:
+  FocalLoss:
+    print_name: 'focal_loss'
+    from_torch: False
+    output_idx: 0
+    target_idx: 0
+    lambda_const: 1.0
+    kwargs:
+      reduction: 'mean'
+      normalize: False
+  CrossEntropyLoss:
+    print_name: 'ce_loss'
+    from_torch: True
+    output_idx: 1
+    target_idx: 1
+    lambda_const: 1.0
+    kwargs:
+      reduction: 'mean'
+      weight: [0.1,1.2,1.9,1.16,6.37,12.12,1.0]
+
+datasets:
+  img_size: [512,512]
+  anno_type: 'point'
+  num_classes: 7 # Class 0 (background)
+  collate_fn: null
+
+  class_def:
+    1: 'topi'
+    2: 'buffalo'
+    3: 'kob'
+    4: 'warthog'
+    5: 'waterbuck'
+    6: 'elephant'
+
+  train:
+    name: 'CSVDataset'
+    csv_file: '/path/to/your/file.csv'
+    root_dir: '/path/to/your/images/folder'
+
+    sampler: null
+
+    albu_transforms:
+      Resize:
+        height: 512
+        width: 512
+        p: 1.0
+      HorizontalFlip:
+        p: 0.5
+      VerticalFlip:
+        p: 0.3
+      RandomRotate90:
+        p: 0.5
+      # Enhanced augmentations for ConvNeXt
+      ColorJitter:
+        brightness: 0.2
+        contrast: 0.2
+        saturation: 0.2
+        hue: 0.1
+        p: 0.5
+      GaussianBlur:
+        blur_limit: [3, 7]
+        p: 0.3
+      MotionBlur:
+        p: 0.3
+      # ImageNet normalization (ConvNeXt was trained on ImageNet)
+      Normalize:
+        mean: [0.485, 0.456, 0.406]
+        std: [0.229, 0.224, 0.225]
+        p: 1.0
+
+    end_transforms:
+      MultiTransformsWrapper:
+        FIDT:
+          num_classes: ${train.datasets.num_classes}
+          down_ratio: ${train.model.kwargs.down_ratio}
+        PointsToMask:
+          radius: 2
+          num_classes: ${train.datasets.num_classes}
+          squeeze: True
+          down_ratio: ${train.model.kwargs.down_ratio}
+
+  validate:
+    name: 'CSVDataset'
+    csv_file: '/path/to/your/file.csv'
+    root_dir: '/path/to/your/images/folder'
+
+    albu_transforms:
+      Resize:
+        height: 512
+        width: 512
+        p: 1.0
+      Normalize:
+        mean: [0.485, 0.456, 0.406]
+        std: [0.229, 0.224, 0.225]
+        p: 1.0
+
+    end_transforms:
+      DownSample:
+        down_ratio: ${train.model.kwargs.down_ratio}
+        anno_type: ${train.datasets.anno_type}
+
+training_settings:
+  trainer: 'Trainer'
+  valid_freq: 1
+  print_freq: 100
+  batch_size: 2  # ConvNeXt is more memory efficient than DINOv3
+  val_batch_size: 1
+  optimizer: 'adamw'  # AdamW works well with ConvNeXt
+  lr: 2e-4  # Slightly higher learning rate for ConvNeXt
+  weight_decay: 0.05  # Higher weight decay for transformers
+  grad_clip_norm: 1.0  # Gradient clipping for stability
+  num_workers:
+    train: 8
+    eval: 8
+  auto_lr:
+    mode: 'max'
+    patience: 15  # Patience for transformer training
+    threshold: 1e-4
+    threshold_mode: 'rel'
+    cooldown: 10
+    min_lr: 1e-6
+  warmup_iters: 300  # Warmup for ConvNeXt
+  vizual_fn: null
+  epochs: 120  # More epochs for fine-tuning
+  evaluator:
+    name: 'HerdNetEvaluator'
+    threshold: 5
+    select_mode: 'max'
+    validate_on: 'f1_score'
+    kwargs:
+      print_freq: 10
+      lmds_kwargs:
+        kernel_size: [3,3]
+        adapt_ts: 0.15  # Lower threshold for better sensitivity
+  stitcher:
+    name: 'HerdNetStitcher'
+    kwargs:
+      overlap: 0
+      down_ratio: ${train.model.kwargs.down_ratio}
+      up: False
+      reduction: 'mean'
