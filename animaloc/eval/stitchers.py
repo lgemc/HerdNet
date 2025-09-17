@@ -231,8 +231,18 @@ class HerdNetStitcher(Stitcher):
             patch = patch[0].to(self.device)
             outputs = self.model(patch)[0]
             heatmap = outputs[0]
-            scale_factor = 16
-            clsmap = F.interpolate(outputs[1], scale_factor=scale_factor, mode='nearest')
+            clsmap = outputs[1]
+
+            # Check if spatial dimensions match, if not, upsample clsmap to match heatmap
+            if heatmap.shape[2:] != clsmap.shape[2:]:
+                # Calculate scale factor based on actual dimensions
+                scale_factor_h = heatmap.shape[2] / clsmap.shape[2]
+                scale_factor_w = heatmap.shape[3] / clsmap.shape[3]
+                if scale_factor_h == scale_factor_w:
+                    clsmap = F.interpolate(clsmap, scale_factor=scale_factor_h, mode='nearest')
+                else:
+                    clsmap = F.interpolate(clsmap, size=heatmap.shape[2:], mode='nearest')
+
             # cat
             outmaps = torch.cat([heatmap, clsmap], dim=1)
             maps = [*maps, *outmaps.unsqueeze(0)]

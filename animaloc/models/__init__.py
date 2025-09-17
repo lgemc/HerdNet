@@ -19,6 +19,7 @@ from .register import MODELS
 from .faster_rcnn import *
 from .dla import *
 from .herdnet import *
+from .herdnet_convnext import *
 from .utils import *
 from .ss_dla import *
 
