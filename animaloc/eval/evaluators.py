@@ -190,9 +190,10 @@ class Evaluator:
             if self.stitcher is not None:
                 output = self.stitcher(images[0])
                 output = self.post_stitcher(output)
+                loss_dict = {}  # No losses computed when using stitcher
             else:
-                # output, _ = self.model(images, targets)  
-                output, _ = self.model(images)
+                # Capture both output and loss components
+                output, loss_dict = self.model(images, targets)
 
             if viz and self.vizual_fn is not None:
                 if i % self.print_freq == 0 or i == len(self.dataloader) - 1:
@@ -211,6 +212,17 @@ class Evaluator:
                 logger.add_meter('MAE', round(iter_metrics.mae(),2))
                 logger.add_meter('MSE', round(iter_metrics.mse(),2))
                 logger.add_meter('RMSE', round(iter_metrics.rmse(),2))
+
+                # Add individual loss components to the logger
+                for loss_name, loss_value in loss_dict.items():
+                    if isinstance(loss_value, torch.Tensor):
+                        logger.add_meter(loss_name, round(loss_value.item(), 4))
+
+                # Add total loss if individual losses exist
+                if loss_dict:
+                    total_loss = sum(loss for loss in loss_dict.values())
+                    if isinstance(total_loss, torch.Tensor):
+                        logger.add_meter('loss', round(total_loss.item(), 4))
 
             if wandb_flag:
                 wandb.log({

@@ -286,8 +286,11 @@ class Trainer:
                     val_output = self.evaluator.evaluate(returns=validate_on, viz=viz)
                     print(f'{self.evaluator.header} {validate_on}: {val_output:.4f}')
 
+                    # Also compute validation loss when using evaluator
+                    val_loss = self.evaluate(epoch, wandb_flag=wandb_flag, returns='all')
+
                     if wandb_flag:
-                        wandb.log({validate_on: val_output, 'epoch': epoch})
+                        wandb.log({validate_on: val_output, 'val_loss': val_loss, 'epoch': epoch})
 
                 elif self.val_dataloader is not None:
                     val_flag = True
@@ -387,7 +390,7 @@ class Trainer:
         for epoch in range(resume_epoch + 1, self.epochs + 1):
 
             # training
-            train_output = self._train(epoch, wandb_flag=wandb_flag) 
+            train_output = self._train(epoch, wandb_flag=wandb_flag)
             if wandb_flag:
                 wandb.log({'train_loss': train_output, 'epoch': epoch})
                 wandb.log({'lr': self.optimizer.param_groups[0]["lr"]})
@@ -403,8 +406,11 @@ class Trainer:
                     val_output = self.evaluator.evaluate(returns=validate_on, viz=viz)
                     print(f'{self.evaluator.header} {validate_on}: {val_output:.4f}')
 
+                    # Also compute validation loss when using evaluator
+                    val_loss = self.evaluate(epoch, wandb_flag=wandb_flag, returns='all')
+
                     if wandb_flag:
-                        wandb.log({validate_on: val_output, 'epoch': epoch})
+                        wandb.log({validate_on: val_output, 'val_loss': val_loss, 'epoch': epoch})
 
                 elif self.val_dataloader is not None:
                     val_flag = True
