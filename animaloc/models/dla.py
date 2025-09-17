@@ -322,8 +322,14 @@ class DLA(nn.Module):
         if name.endswith('.pth'):
             model_weights = torch.load(data + name)
         else:
-            model_url = get_model_url(data, name, hash)
-            model_weights = model_zoo.load_url(model_url)
+            # Try local file first, then fallback to URL
+            import os
+            local_path = f'{name}-{hash}.pth'
+            if os.path.exists(local_path):
+                model_weights = torch.load(local_path)
+            else:
+                model_url = get_model_url(data, name, hash)
+                model_weights = model_zoo.load_url(model_url)
         num_classes = len(model_weights[list(model_weights.keys())[-1]])
         self.fc = nn.Conv2d(
             self.channels[-1], num_classes,

@@ -21,3 +21,6 @@ configs/test/*
 !configs/*/dla34.yaml
 !configs/*/herdnet.yaml
 .idea/**
+
+# Model weights
+*.pth
