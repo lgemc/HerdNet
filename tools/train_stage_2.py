@@ -83,7 +83,7 @@ metrics = PointsMetrics(radius=5, num_classes=num_classes) # radius for herdnet 
 stitcher = HerdNetStitcher(
     model=herdnet,
     size=(patch_size,patch_size),
-    overlap=160,
+    overlap=0,
     down_ratio=down_ratio,
     reduction='mean',
     up=False
