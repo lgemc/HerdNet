@@ -37,7 +37,13 @@ def load_model(model: torch.nn.Module, pth_path: str) -> torch.nn.Module:
         map_location = torch.device('cuda')
     
     checkpoint = torch.load(pth_path, map_location=map_location)
-    model.load_state_dict(checkpoint['model_state_dict'])
+    state_dict = checkpoint['model_state_dict']
+
+    # Handle state dict saved from LossWrapper (with 'model.' prefix)
+    if any(k.startswith('model.') for k in state_dict.keys()):
+        state_dict = {k.replace('model.', '', 1): v for k, v in state_dict.items()}
+
+    model.load_state_dict(state_dict)
 
     return model
 
