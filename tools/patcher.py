@@ -75,9 +75,8 @@ def main():
             else:
                 padder = PadIfNeeded(
                     args.height, args.width,
-                    position = PadIfNeeded.PositionType.TOP_LEFT,
+                    position = "top_left",
                     border_mode = cv2.BORDER_CONSTANT,
-                    value= 0
                     )
                 img_ptch_df = patches_buffer[patches_buffer['base_images']==img_name]
                 for row in img_ptch_df[['images','limits']].to_numpy().tolist():
