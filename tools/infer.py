@@ -77,10 +77,10 @@ def main():
         map_location = torch.device('cuda')
 
     checkpoint = torch.load(args.pth, map_location=map_location)
-    classes = checkpoint['classes']
+    classes = ['buffalo', 'elephant', 'kob','topi','warthog','waterbuck']
     num_classes = len(classes) + 1
-    img_mean = checkpoint['mean']
-    img_std = checkpoint['std']
+    img_mean =  (0.485, 0.456, 0.406)
+    img_std =(0.229, 0.224, 0.225)
     
     # Prepare dataset and dataloader
     img_names = [i for i in os.listdir(args.root) 
@@ -144,7 +144,7 @@ def main():
     print('Saving the detections ...')
     detections = evaluator.detections
     detections.dropna(inplace=True)
-    detections['species'] = detections['labels'].map(classes)
+    detections['species'] = detections['labels']
     detections.to_csv(os.path.join(dest, f'{curr_date}_detections.csv'), index=False)
 
     # Draw detections on images and create thumbnails
