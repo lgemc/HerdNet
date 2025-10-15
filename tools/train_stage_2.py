@@ -53,13 +53,15 @@ val_dataset = CSVDataset(
 train_dataloader = DataLoader(
     dataset = train_dataset,
     batch_size = 4,
-    shuffle = True
+    shuffle = True,
+    num_workers=30
     )
 
 val_dataloader = DataLoader(
     dataset = val_dataset,
     batch_size = 1,
-    shuffle = False
+    shuffle = False,
+    num_workers=30
     )
 
 herdnet = HerdNet(num_classes=num_classes, down_ratio=down_ratio).to(device)
