@@ -20,11 +20,11 @@ patch_size = 512
 num_classes = 7 # 7 classes: 'buffalo', 'elephant', 'kob','topi','warthog','waterbuck', and background.
 down_ratio = 2
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-work_dir = '/workspace/HerdNet/data_stage_2' # output directory
+work_dir = '/home/lmanrique/Do/HerdNetLGM/data_stage_2' # output directory
 os.makedirs(work_dir, exist_ok=True)
-root_dir = '/workspace/HerdNet/data/hnp_patches_plus_train_patches'
+root_dir = '/home/lmanrique/Do/HerdNetLGM/data/hnp_patches_plus_train_patches'
 train_dataset = FolderDataset(
-    csv_file = '/workspace/HerdNet/data/train_patches.csv',
+    csv_file = '/home/lmanrique/Do/HerdNetLGM/data/train_patches.csv',
     root_dir = root_dir,
     albu_transforms = [
         A.VerticalFlip(p=0.5),
@@ -44,8 +44,8 @@ train_dataset = FolderDataset(
     )
 
 val_dataset = CSVDataset(
-    csv_file = '/workspace/HerdNet/data/val.csv',
-    root_dir = '/workspace/HerdNet/data/val',
+    csv_file = '/home/lmanrique/Do/HerdNetLGM/data/val.csv',
+    root_dir = '/home/lmanrique/Do/HerdNetLGM/data/val',
     albu_transforms = [A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))],
     end_transforms = [DownSample(down_ratio=down_ratio, anno_type='point')]
     )
@@ -65,7 +65,7 @@ val_dataloader = DataLoader(
     )
 
 herdnet = HerdNet(num_classes=num_classes, down_ratio=down_ratio).to(device)
-herdnet = load_model(herdnet, pth_path="/workspace/HerdNet/data/best_model.pth")
+herdnet = load_model(herdnet, pth_path="/home/lmanrique/Do/HerdNetLGM/data/latest_model_100.pth")
 
 weight = Tensor([0.1, 1.0, 2.0, 1.0, 6.0, 12.0, 1.0]).to(device) # herdnet weights
 
@@ -85,7 +85,7 @@ metrics = PointsMetrics(radius=5, num_classes=num_classes) # radius for herdnet 
 stitcher = HerdNetStitcher(
     model=herdnet,
     size=(patch_size,patch_size),
-    overlap=0,
+    overlap=160,
     down_ratio=down_ratio,
     reduction='mean',
     up=False
@@ -113,7 +113,7 @@ trainer = Trainer(
     evaluator=evaluator,
     work_dir=work_dir,
     print_freq=100,
-    valid_freq=20,
+    valid_freq=10,
     auto_lr={
         "mode": "max",
         "patience": 10,
