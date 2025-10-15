@@ -113,6 +113,7 @@ trainer = Trainer(
     evaluator=evaluator,
     work_dir=work_dir,
     print_freq=100,
+    valid_freq=20,
     auto_lr={
         "mode": "max",
         "patience": 10,

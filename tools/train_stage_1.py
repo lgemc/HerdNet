@@ -54,7 +54,7 @@ val_dataset = CSVDataset(
 train_dataloader = DataLoader(
     dataset = train_dataset,
     batch_size = 4,
-    num_workers=30,
+    num_workers=45,
     shuffle = True
     )
 
@@ -120,6 +120,7 @@ trainer = Trainer(
         "cooldown": 10,
         "min_lr": 1e-6,
     },
+    valid_freq=20,
 )
 
 wandb.init(project='herdnet')
